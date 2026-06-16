@@ -9,6 +9,8 @@ import { McpClientManager } from '../tools/McpClientManager';
 import { mcpServers } from '../config/mcp';
 
 import { SystemMonitorTool } from '../tools/SystemMonitorTool';
+import { WebScraperTool } from '../tools/WebScraperTool';
+import { WebSearchTool } from '../tools/WebSearchTool';
 
 export class AgentController {
   private memoryManager: MemoryManager;
@@ -23,6 +25,8 @@ export class AgentController {
     
     // Register native tools
     this.toolRegistry.register(new SystemMonitorTool());
+    this.toolRegistry.register(new WebScraperTool());
+    this.toolRegistry.register(new WebSearchTool());
   }
 
   public async handleMessage(

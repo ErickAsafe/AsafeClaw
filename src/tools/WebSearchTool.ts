@@ -1,0 +1,56 @@
+import { BaseTool, ToolSchema } from './BaseTool';
+import { search, SafeSearchType } from 'duck-duck-scrape';
+
+export class WebSearchTool implements BaseTool {
+  name = 'web_search';
+  description = 'Realiza uma pesquisa na internet (usando DuckDuckGo) e retorna os resultados principais. Use para encontrar fatos recentes, notícias ou dados que você não possui na memória.';
+  
+  getSchema(): ToolSchema {
+    return {
+      name: this.name,
+      description: this.description,
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'O termo de busca a ser pesquisado (ex: "últimas notícias inteligência artificial")'
+          }
+        },
+        required: ['query']
+      }
+    };
+  }
+
+  async execute(args: Record<string, any>): Promise<string> {
+    const { query } = args;
+
+    if (!query) {
+      return JSON.stringify({ error: 'Query é obrigatória' });
+    }
+
+    try {
+      const searchResults = await search(query, {
+        safeSearch: SafeSearchType.MODERATE
+      });
+
+      if (!searchResults.results || searchResults.results.length === 0) {
+        return JSON.stringify({ message: 'Nenhum resultado encontrado para esta busca.' });
+      }
+
+      // Limit to top 5 results to avoid too much context
+      const topResults = searchResults.results.slice(0, 5).map(result => ({
+        title: result.title,
+        url: result.url,
+        snippet: result.description
+      }));
+
+      return JSON.stringify({
+        query,
+        results: topResults
+      });
+    } catch (error: any) {
+      return JSON.stringify({ error: `Falha na pesquisa: ${error.message}` });
+    }
+  }
+}
