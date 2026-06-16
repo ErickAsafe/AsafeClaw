@@ -15,11 +15,13 @@ export class ProviderFactory {
         return new OpenRouterProvider('meta-llama/llama-3.3-70b-instruct:free');
       case 'fallback':
         return new FallbackProvider([
-          new OpenRouterProvider('meta-llama/llama-3.3-70b-instruct:free'),// 1st try (OpenRouter - Great context & free limit)
-          new GeminiProvider('gemini-2.0-flash'),      // 2nd try (Stable and working!)
-          new GeminiProvider('gemini-1.5-flash-8b'),   // 3rd try (Higher rate limit free tier)
-          new GroqProvider('llama-3.3-70b-versatile'), // 4th try (Smartest, but often hits 429)
-          new GroqProvider('llama-3.1-8b-instant')     // 5th try (Backup Groq)
+          new OpenRouterProvider('meta-llama/llama-3.3-70b-instruct:free'), // 1st try (Can hit 429 if upstream is busy)
+          new OpenRouterProvider('google/gemma-4-31b-it:free'), // 2nd try (OpenRouter backup free model)
+          new OpenRouterProvider('openrouter/free'), // 3rd try (Auto-routes to any free model)
+          new GeminiProvider('gemini-flash-latest'), // 4th try (Native Google)
+          new GeminiProvider('gemini-pro-latest'),   // 5th try (Native Google Pro)
+          new GroqProvider('llama-3.3-70b-versatile'), // 6th try (Hits 429 easily but good to have)
+          new GroqProvider('llama-3.1-8b-instant')     // 7th try
         ]);
       default:
         throw new Error(`Unsupported provider: ${providerName}`);
