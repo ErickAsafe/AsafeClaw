@@ -1,0 +1,24 @@
+# Dependências do Projeto
+
+- `@google/genai`: ^2.8.0
+- `@modelcontextprotocol/sdk`: ^1.29.0
+- `@modelcontextprotocol/server-gdrive`: ^2025.1.14
+- `axios`: ^1.18.0
+- `better-sqlite3`: ^12.11.1
+- `dotenv`: ^17.4.2
+- `google-auth-library`: ^10.7.0
+- `googlethis`: ^1.8.0
+- `grammy`: ^1.44.0
+- `groq-sdk": "^1.2.1`
+- `js-yaml`: ^4.2.0
+- `mcp-server-gmail`: ^0.1.5
+- `mcp-server-google-calendar`: ^0.0.5
+- `pdf-parse`: ^2.4.5
+
+## Dev Dependencies
+- `@types/better-sqlite3`: ^7.6.13
+- `@types/js-yaml`: ^4.0.9
+- `@types/node`: ^25.9.3
+- `@types/pdf-parse`: ^1.1.5
+- `tsx`: ^4.22.4
+- `typescript`: ^6.0.3

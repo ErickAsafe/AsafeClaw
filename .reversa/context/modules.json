@@ -1,0 +1,39 @@
+{
+  "modules": [
+    {
+      "name": "core",
+      "description": "Lógica principal do bot, incluindo o loop iterativo (AgentLoop), controlador e abstrações de provedores de IA.",
+      "dependencies": ["memory", "tools", "config"]
+    },
+    {
+      "name": "handlers",
+      "description": "Manipuladores de entrada e saída do Telegram (texto, voz, documentos, imagens).",
+      "dependencies": ["config"]
+    },
+    {
+      "name": "memory",
+      "description": "Gerenciamento de contexto, histórico de conversas, uso de tokens e integração com SQLite e Obsidian.",
+      "dependencies": ["config"]
+    },
+    {
+      "name": "mcps",
+      "description": "Integração e configuração de servidores MCP (Google Calendar, Gmail, GDrive).",
+      "dependencies": []
+    },
+    {
+      "name": "skills",
+      "description": "Roteamento e execução de skills do agente baseados em arquivos markdown.",
+      "dependencies": []
+    },
+    {
+      "name": "tools",
+      "description": "Ferramentas disponíveis para o agente (Web Search, Scraper, Memory Tool, System Monitor).",
+      "dependencies": ["memory"]
+    },
+    {
+      "name": "config",
+      "description": "Configuração de variáveis de ambiente e chaves de API.",
+      "dependencies": []
+    }
+  ]
+}

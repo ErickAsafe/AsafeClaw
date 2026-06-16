@@ -1,0 +1,16 @@
+{
+  "inventory": {
+    "directories": ["src/config", "src/core", "src/handlers", "src/mcps", "src/memory", "src/skills", "src/tools"],
+    "technologies": ["TypeScript", "Node.js", "SQLite", "grammy", "MCP", "Gemini"]
+  },
+  "organization_suggestion": {
+    "granularity": "module",
+    "rationale": "O código-fonte está estruturado em pastas de alto nível que representam módulos ou domínios da aplicação, como core, handlers e memory.",
+    "signals": [
+      {
+        "type": "directory_structure",
+        "evidence": ["src/core", "src/handlers", "src/memory", "src/mcps"]
+      }
+    ]
+  }
+}
