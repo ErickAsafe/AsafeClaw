@@ -6,9 +6,11 @@ import { env } from '../../config/env';
 
 export class GroqProvider extends BaseProvider {
   private groq: Groq;
+  private model: string;
 
-  constructor() {
+  constructor(model: string = 'llama-3.3-70b-versatile') {
     super();
+    this.model = model;
     this.groq = new Groq({ apiKey: env.GROQ_API_KEY });
   }
 
@@ -43,7 +45,7 @@ export class GroqProvider extends BaseProvider {
     })) : undefined;
 
     const response = await this.groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: this.model,
       messages: formattedMessages,
       tools: groqTools as any,
       tool_choice: groqTools ? 'auto' : 'none'

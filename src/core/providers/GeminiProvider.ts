@@ -6,9 +6,11 @@ import { env } from '../../config/env';
 
 export class GeminiProvider extends BaseProvider {
   private ai: GoogleGenAI;
+  private model: string;
 
-  constructor() {
+  constructor(model: string = 'gemini-1.5-flash') {
     super();
+    this.model = model;
     this.ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
   }
 
@@ -38,7 +40,7 @@ export class GeminiProvider extends BaseProvider {
     }
 
     const response = await this.ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: this.model,
       contents,
       config
     });
