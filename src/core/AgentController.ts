@@ -36,9 +36,12 @@ export class AgentController {
     conversationId: string, 
     userId: string, 
     text: string,
-    options?: { requiresAudioReply?: boolean }
+    options?: { requiresAudioReply?: boolean, image?: import('./providers/BaseProvider').ImagePayload }
   ): Promise<{ text: string, requiresAudioReply: boolean }> {
-    const providerName = 'fallback'; // Changed to Fallback to use both Groq and Gemini and avoid limits
+    let providerName = 'fallback'; // Changed to Fallback to use both Groq and Gemini and avoid limits
+    if (options?.image) {
+      providerName = 'gemini'; // Force Gemini for multimodality since Llama3 doesn't support images
+    }
     this.memoryManager.ensureConversation(conversationId, userId, providerName);
 
     // Initialize MCP tools if not already done
@@ -93,7 +96,7 @@ Escolha com sabedoria onde salvar cada informação.`;
     const provider = ProviderFactory.create(providerName);
     const agentLoop = new AgentLoop(this.memoryManager);
 
-    const response = await agentLoop.run(provider, conversationId, systemInstruction, this.toolRegistry);
+    const response = await agentLoop.run(provider, conversationId, systemInstruction, this.toolRegistry, options?.image);
     return { text: response, requiresAudioReply: options?.requiresAudioReply || false };
   }
 

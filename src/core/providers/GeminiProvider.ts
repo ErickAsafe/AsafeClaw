@@ -17,13 +17,34 @@ export class GeminiProvider extends BaseProvider {
   public async generate(
     messages: Message[],
     systemInstruction: string,
-    tools: ToolSchema[]
+    tools: ToolSchema[],
+    image?: import('./BaseProvider').ImagePayload
   ): Promise<ProviderResponse> {
     // Format messages for Gemini
-    const contents = messages.map(msg => ({
+    const contents: any[] = messages.map(msg => ({
       role: msg.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: msg.content }]
     }));
+
+    if (image && contents.length > 0) {
+      const lastUserContent = [...contents].reverse().find(c => c.role === 'user');
+      if (lastUserContent) {
+        lastUserContent.parts.push({
+          inlineData: {
+            data: image.base64,
+            mimeType: image.mimeType
+          }
+        });
+      } else {
+        contents.push({
+          role: 'user',
+          parts: [
+            { text: "Aqui está a imagem enviada:" },
+            { inlineData: { data: image.base64, mimeType: image.mimeType } }
+          ]
+        });
+      }
+    }
 
     // Format tools for Gemini if any
     const geminiTools = tools.length > 0 ? [{

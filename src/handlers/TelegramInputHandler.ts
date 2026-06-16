@@ -40,6 +40,20 @@ export class TelegramInputHandler {
     return filePath;
   }
 
+  public static async downloadImageAsBase64(fileUrl: string): Promise<{ base64: string, mimeType: string }> {
+    const response = await fetch(fileUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    return {
+      base64: buffer.toString('base64'),
+      mimeType: contentType
+    };
+  }
+
   public static async parseDocument(filePath: string, mimetype: string): Promise<string> {
     if (mimetype === 'application/pdf') {
       const dataBuffer = fs.readFileSync(filePath);

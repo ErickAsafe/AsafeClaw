@@ -168,6 +168,34 @@ bot.on('message:document', async (ctx) => {
   }
 });
 
+bot.on('message:photo', async (ctx) => {
+  const userId = ctx.from?.id.toString();
+  const chatId = ctx.chat.id.toString();
+  
+  if (!userId) return;
+  console.log(`[Bot] Received photo from ${userId}`);
+  
+  // Get the highest resolution photo
+  const photo = ctx.message.photo[ctx.message.photo.length - 1];
+  if (!photo) return;
+  
+  await ctx.replyWithChatAction('typing');
+  
+  try {
+    const file = await ctx.getFile();
+    const url = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+    
+    const imagePayload = await TelegramInputHandler.downloadImageAsBase64(url);
+    const caption = ctx.message.caption || "Por favor, analise esta imagem.";
+    
+    const response = await controller.handleMessage(chatId, userId, caption, { image: imagePayload });
+    await TelegramOutputHandler.sendResponse(ctx, response);
+  } catch (error: any) {
+    console.error('[Bot] Photo error:', error);
+    await ctx.reply('Erro ao processar imagem.');
+  }
+});
+
 bot.on(['message:voice', 'message:audio'], async (ctx) => {
   const userId = ctx.from?.id.toString();
   const chatId = ctx.chat.id.toString();

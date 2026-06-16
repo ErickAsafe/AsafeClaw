@@ -14,7 +14,8 @@ export class AgentLoop {
     provider: BaseProvider,
     conversationId: string,
     systemInstruction: string,
-    tools: ToolRegistry
+    tools: ToolRegistry,
+    image?: import('./providers/BaseProvider').ImagePayload
   ): Promise<string> {
     let iterations = 0;
     const maxIterations = env.MAX_ITERATIONS;
@@ -27,7 +28,7 @@ export class AgentLoop {
       const context = this.memory.getContext(conversationId);
 
       try {
-        const response = await provider.generate(context, systemInstruction, toolSchemas);
+        const response = await provider.generate(context, systemInstruction, toolSchemas, image);
 
         // Save token usage
         if (response.usage) {

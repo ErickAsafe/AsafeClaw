@@ -16,6 +16,11 @@ export interface ProviderResponse {
   providerName?: string;
 }
 
+export interface ImagePayload {
+  base64: string;
+  mimeType: string;
+}
+
 export abstract class BaseProvider {
   /**
    * Generates a response from the LLM based on conversation history and available tools.
@@ -23,6 +28,7 @@ export abstract class BaseProvider {
   public abstract generate(
     messages: Message[],
     systemInstruction: string,
-    tools: ToolSchema[]
+    tools: ToolSchema[],
+    image?: ImagePayload
   ): Promise<ProviderResponse>;
 }
