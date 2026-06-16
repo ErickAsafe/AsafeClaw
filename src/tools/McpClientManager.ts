@@ -9,6 +9,25 @@ export class DynamicMcpTool extends BaseTool {
   private schema: ToolSchema;
   private client: Client;
 
+  private sanitizeSchema(obj: any): any {
+    if (Array.isArray(obj)) {
+      return obj.map(v => this.sanitizeSchema(v));
+    } else if (obj !== null && typeof obj === 'object') {
+      if (obj.$ref || obj.anyOf || obj.oneOf || obj.allOf) {
+        return { type: 'object' };
+      }
+      const newObj: any = {};
+      for (const [k, v] of Object.entries(obj)) {
+        newObj[k] = this.sanitizeSchema(v);
+      }
+      if (newObj.type === 'array' && !newObj.items) {
+        newObj.items = { type: 'string' };
+      }
+      return newObj;
+    }
+    return obj;
+  }
+
   constructor(client: Client, mcpToolDef: any) {
     super();
     this.client = client;
@@ -19,22 +38,7 @@ export class DynamicMcpTool extends BaseTool {
     const properties: Record<string, any> = {};
     if (mcpToolDef.inputSchema && mcpToolDef.inputSchema.properties) {
       for (const [key, val] of Object.entries<any>(mcpToolDef.inputSchema.properties)) {
-        const prop: any = {
-          type: val.type || 'string',
-          description: val.description || ''
-        };
-        
-        if (val.enum) prop.enum = val.enum;
-        
-        if (val.type === 'array') {
-          prop.items = val.items || { type: 'string' };
-        }
-        
-        if (val.type === 'object' && val.properties) {
-          prop.properties = val.properties;
-        }
-
-        properties[key] = prop;
+        properties[key] = this.sanitizeSchema(val);
       }
     }
     
