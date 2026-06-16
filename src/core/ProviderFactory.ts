@@ -12,10 +12,10 @@ export class ProviderFactory {
       case 'groq':
         return new GroqProvider();
       case 'openrouter':
-        return new OpenRouterProvider('minimax/minimax-01');
+        return new OpenRouterProvider('meta-llama/llama-3.3-70b-instruct');
       case 'fallback':
         return new FallbackProvider([
-          new OpenRouterProvider('minimax/minimax-01'),// 1st try (OpenRouter MiniMax - Great context & free limit)
+          new OpenRouterProvider('meta-llama/llama-3.3-70b-instruct'),// 1st try (OpenRouter - Great context & free limit)
           new GeminiProvider('gemini-2.5-flash'),      // 2nd try (Newest and working!)
           new GeminiProvider('gemini-1.5-flash'),      // 3rd try (Higher rate limit free tier)
           new GroqProvider('llama-3.3-70b-versatile'), // 4th try (Smartest, but often hits 429)
