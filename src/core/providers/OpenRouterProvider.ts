@@ -6,7 +6,7 @@ import { env } from '../../config/env';
 export class OpenRouterProvider extends BaseProvider {
   private model: string;
 
-  constructor(model: string = 'minimax/minimax-01') {
+  constructor(model: string = 'meta-llama/llama-3.3-70b-instruct') {
     super();
     this.model = model;
   }
