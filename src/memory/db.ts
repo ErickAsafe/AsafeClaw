@@ -33,6 +33,15 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
+
+  CREATE TABLE IF NOT EXISTS user_facts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    fact TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_user_facts_user_id ON user_facts(user_id);
 `);
 
 export default db;

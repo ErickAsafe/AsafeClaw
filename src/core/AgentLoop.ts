@@ -40,7 +40,7 @@ export class AgentLoop {
           }
 
           try {
-            const toolResult = await tool.execute(args);
+            const toolResult = await tool.execute(args, { conversationId });
             console.log(`[AgentLoop] Tool Result: ${toolResult}`);
             this.memory.addMessage(conversationId, 'assistant', `Executei a ferramenta ${name} com os argumentos: ${JSON.stringify(args)}`);
             this.memory.addMessage(conversationId, 'user', `Resultado da ferramenta ${name}:\n${toolResult}\n\nPor favor, responda à minha pergunta original baseado nestes dados. Se não precisar de mais ferramentas, gere sua resposta final.`);

@@ -14,6 +14,10 @@ export interface ToolSchema {
   };
 }
 
+export interface ToolContext {
+  conversationId: string;
+}
+
 export abstract class BaseTool {
   public abstract readonly name: string;
   public abstract readonly description: string;
@@ -21,5 +25,5 @@ export abstract class BaseTool {
   public abstract getSchema(): ToolSchema;
   
   // Arguments will be a record parsed from LLM JSON response
-  public abstract execute(args: Record<string, any>): Promise<string>;
+  public abstract execute(args: Record<string, any>, context?: ToolContext): Promise<string>;
 }
