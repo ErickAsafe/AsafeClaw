@@ -16,6 +16,40 @@ const controller = new AgentController();
 // Use authentication middleware
 bot.use(TelegramInputHandler.handleAuth.bind(TelegramInputHandler));
 
+import { SkillLoader } from './skills/SkillLoader';
+
+bot.command('skills', async (ctx) => {
+  const userId = ctx.from?.id.toString();
+  if (!userId) return;
+  console.log(`[Bot] /skills command from ${userId}`);
+  
+  await ctx.replyWithChatAction('typing');
+  const skills = SkillLoader.loadAvailableSkills();
+  if (skills.length === 0) {
+    await ctx.reply('Nenhuma skill disponível no momento.');
+    return;
+  }
+  
+  const skillsList = skills.map(s => `🔹 *${s.name}*\n_${s.description}_`).join('\n\n');
+  await ctx.reply(`🧠 *Skills Disponíveis no AsafeClaw:*\n\n${skillsList}\n\n💡 _Dica: Peça algo como "Atue como o [Nome] e avalie minha ideia"_`, { parse_mode: 'Markdown' });
+});
+
+bot.command('vps', async (ctx) => {
+  const userId = ctx.from?.id.toString();
+  const chatId = ctx.chat.id.toString();
+  if (!userId) return;
+  console.log(`[Bot] /vps command from ${userId}`);
+  
+  await ctx.replyWithChatAction('typing');
+  try {
+    const response = await controller.handleMessage(chatId, userId, "Execute a ferramenta de monitorar VPS e me dê um relatório completo de uso de CPU, RAM, disco e uptime do servidor atual.");
+    await TelegramOutputHandler.sendResponse(ctx, response);
+  } catch (error: any) {
+    console.error('[Bot] VPS command error:', error);
+    await ctx.reply('Erro ao buscar status da VPS.');
+  }
+});
+
 bot.on('message:text', async (ctx) => {
   const userId = ctx.from?.id.toString();
   const chatId = ctx.chat.id.toString();
@@ -102,6 +136,12 @@ bot.on(['message:voice', 'message:audio'], async (ctx) => {
 bot.catch((err) => {
   console.error('[Grammy] Error:', err);
 });
+
+console.log('[SandecoClaw] Setting up commands...');
+bot.api.setMyCommands([
+  { command: 'skills', description: 'Listar todas as personas/skills disponíveis' },
+  { command: 'vps', description: 'Obter relatório de status da VPS' }
+]).catch(console.error);
 
 console.log('[SandecoClaw] Starting bot...');
 bot.start({

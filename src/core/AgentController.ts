@@ -8,6 +8,8 @@ import { ToolRegistry } from '../tools/ToolRegistry';
 import { McpClientManager } from '../tools/McpClientManager';
 import { mcpServers } from '../config/mcp';
 
+import { SystemMonitorTool } from '../tools/SystemMonitorTool';
+
 export class AgentController {
   private memoryManager: MemoryManager;
   private toolRegistry: ToolRegistry;
@@ -18,6 +20,9 @@ export class AgentController {
     this.memoryManager = new MemoryManager();
     this.toolRegistry = new ToolRegistry();
     this.mcpManager = new McpClientManager();
+    
+    // Register native tools
+    this.toolRegistry.register(new SystemMonitorTool());
   }
 
   public async handleMessage(
