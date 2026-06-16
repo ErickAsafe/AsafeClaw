@@ -35,7 +35,7 @@ export class AgentController {
     text: string,
     options?: { requiresAudioReply?: boolean }
   ): Promise<{ text: string, requiresAudioReply: boolean }> {
-    const providerName = 'groq'; // Changed to Groq to avoid Gemini free tier quota limits
+    const providerName = 'fallback'; // Changed to Fallback to use both Groq and Gemini and avoid limits
     this.memoryManager.ensureConversation(conversationId, userId, providerName);
 
     // Initialize MCP tools if not already done
