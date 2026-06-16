@@ -1,10 +1,9 @@
 import { BaseTool, ToolSchema } from './BaseTool';
 import axios from 'axios';
-import * as cheerio from 'cheerio';
 
 export class WebScraperTool implements BaseTool {
   name = 'web_scraper';
-  description = 'Baixa e extrai o texto de uma página web a partir de uma URL. Use para ler artigos, documentações e notícias completas.';
+  description = 'Acessa uma URL específica e retorna o conteúdo textual principal da página (em formato Markdown). Útil para ler artigos, documentações ou sites específicos.';
   
   getSchema(): ToolSchema {
     return {
@@ -15,7 +14,7 @@ export class WebScraperTool implements BaseTool {
         properties: {
           url: {
             type: 'string',
-            description: 'A URL completa da página a ser lida (ex: https://pt.wikipedia.org/wiki/Inteligência_artificial)'
+            description: 'A URL completa da página a ser lida (ex: https://pt.wikipedia.org/wiki/IA)'
           }
         },
         required: ['url']
@@ -31,34 +30,33 @@ export class WebScraperTool implements BaseTool {
     }
 
     try {
-      const response = await axios.get(url, {
+      // Usa o Jina Reader API para extrair o markdown limpo da página
+      const response = await axios.get(`https://r.jina.ai/${url}`, {
         headers: {
+          'Accept': 'text/plain',
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         },
-        timeout: 10000 // 10s timeout
+        timeout: 15000 // 15s timeout
       });
 
-      const html = response.data;
-      const $ = cheerio.load(html);
-
-      // Remove unwanted elements
-      $('script, style, noscript, iframe, img, svg, video, audio, nav, footer, header').remove();
-
-      // Extract text from the body
-      let text = $('body').text();
-
-      // Clean up whitespace
-      text = text.replace(/\s+/g, ' ').trim();
-
-      // Limit size if it's too large to avoid blowing up the context window
-      if (text.length > 15000) {
-        text = text.substring(0, 15000) + '... [Conteúdo Truncado por ser longo demais]';
+      const markdownContent = response.data;
+      
+      if (!markdownContent || markdownContent.trim().length === 0) {
+        return JSON.stringify({
+          url,
+          error: 'Página retornou vazia ou não pôde ser processada.'
+        });
       }
+
+      // Limit characters to avoid exploding the context window
+      const MAX_LENGTH = 12000;
+      const truncatedContent = markdownContent.length > MAX_LENGTH 
+        ? markdownContent.substring(0, MAX_LENGTH) + '...\n\n(Conteúdo truncado devido ao tamanho)' 
+        : markdownContent;
 
       return JSON.stringify({
         url,
-        title: $('title').text() || 'Sem título',
-        content: text
+        content: truncatedContent
       });
     } catch (error: any) {
       return JSON.stringify({ error: `Falha ao acessar a URL: ${error.message}` });
