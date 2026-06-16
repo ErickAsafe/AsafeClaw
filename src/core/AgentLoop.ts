@@ -58,6 +58,14 @@ export class AgentLoop {
         }
       } catch (error: any) {
         console.error(`[AgentLoop] LLM Generation Error:`, error);
+        
+        // Auto-healing: If the LLM hallucinates or creates invalid JSON for a tool call (like Groq's tool_use_failed)
+        if (error.message && (error.message.includes('tool_use_failed') || error.message.includes('failed_generation'))) {
+          console.log('[AgentLoop] Auto-healing from tool_use_failed...');
+          this.memory.addMessage(conversationId, 'user', `Erro interno: Você tentou chamar uma ferramenta mas a sintaxe JSON estava inválida ou você usou tags XML incorretas. Por favor, tente chamar a ferramenta novamente usando estritamente o formato de chamada de função nativo do sistema.`);
+          continue; // Retry the loop
+        }
+
         return `Ocorreu um erro no processamento: ${error.message}`;
       }
     }
