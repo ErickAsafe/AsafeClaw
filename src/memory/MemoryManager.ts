@@ -30,4 +30,8 @@ export class MemoryManager {
     // Return recent messages truncated by MEMORY_WINDOW_SIZE
     return this.msgRepo.getByConversationId(conversationId, env.MEMORY_WINDOW_SIZE);
   }
+
+  public getMessageCount(conversationId: string): number {
+    return this.msgRepo.countByConversationId(conversationId);
+  }
 }

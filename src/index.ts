@@ -50,6 +50,35 @@ bot.command('vps', async (ctx) => {
   }
 });
 
+bot.command('status', async (ctx) => {
+  const userId = ctx.from?.id.toString();
+  const chatId = ctx.chat.id.toString();
+  if (!userId) return;
+  console.log(`[Bot] /status command from ${userId}`);
+  
+  try {
+    const messageCount = controller.getMessageCount(chatId);
+    // rough estimation: ~15 tokens per short message
+    const estimatedTokens = messageCount * 50; 
+    
+    const statusMsg = `📊 *Status da Memória e LLMs*\n\n` +
+      `*🧠 Memória Curta (Contexto Atual):*\n` +
+      `Mensagens trocadas: ${messageCount}\n` +
+      `Tokens estimados: ~${estimatedTokens}\n\n` +
+      `*🤖 Pilha de Modelos (Fallback Automático):*\n` +
+      `1️⃣ Gemini 2.5 Flash (Principal)\n` +
+      `2️⃣ Gemini 1.5 Flash (Backup Gratuito de Alta Capacidade)\n` +
+      `3️⃣ Groq Llama 3.3 70B (Inteligente, mas com limite estrito)\n` +
+      `4️⃣ Groq Llama 3.1 8B (Último Recurso)\n\n` +
+      `_A troca entre eles acontece automaticamente e invisivelmente caso a cota gratuita do modelo principal acabe._`;
+      
+    await ctx.reply(statusMsg, { parse_mode: 'Markdown' });
+  } catch (error: any) {
+    console.error('[Bot] Status command error:', error);
+    await ctx.reply('Erro ao buscar o status de tokens.');
+  }
+});
+
 bot.on('message:text', async (ctx) => {
   const userId = ctx.from?.id.toString();
   const chatId = ctx.chat.id.toString();
@@ -140,7 +169,8 @@ bot.catch((err) => {
 console.log('[SandecoClaw] Setting up commands...');
 bot.api.setMyCommands([
   { command: 'skills', description: 'Listar todas as personas/skills disponíveis' },
-  { command: 'vps', description: 'Obter relatório de status da VPS' }
+  { command: 'vps', description: 'Obter relatório de status da VPS' },
+  { command: 'status', description: 'Checar memória atual e pilha de modelos LLM' }
 ]).catch(console.error);
 
 console.log('[SandecoClaw] Starting bot...');

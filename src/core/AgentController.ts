@@ -93,4 +93,8 @@ Escolha com sabedoria onde salvar cada informação.`;
     const response = await agentLoop.run(provider, conversationId, systemInstruction, this.toolRegistry);
     return { text: response, requiresAudioReply: options?.requiresAudioReply || false };
   }
+
+  public getMessageCount(conversationId: string): number {
+    return this.memoryManager.getMessageCount(conversationId);
+  }
 }

@@ -28,4 +28,10 @@ export class MessageRepository {
     `);
     return stmt.all(conversationId, limit) as Message[];
   }
+
+  public countByConversationId(conversationId: string): number {
+    const stmt = db.prepare(`SELECT COUNT(*) as count FROM messages WHERE conversation_id = ?`);
+    const result = stmt.get(conversationId) as { count: number };
+    return result.count;
+  }
 }
