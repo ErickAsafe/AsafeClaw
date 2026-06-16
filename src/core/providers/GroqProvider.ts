@@ -60,26 +60,28 @@ export class GroqProvider extends BaseProvider {
     const usage = response.usage ? {
       prompt: response.usage.prompt_tokens || 0,
       completion: response.usage.completion_tokens || 0
-    } : undefined;
+    } : null;
 
     // Check if the response contains a tool call
     if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
       const call = choice.message.tool_calls[0]?.function;
       if (call && call.name) {
-        return {
+        const res: ProviderResponse = {
           toolCall: {
             name: call.name,
             arguments: JSON.parse(call.arguments || '{}')
-          },
-          usage
+          }
         };
+        if (usage) res.usage = usage;
+        return res;
       }
     }
 
     // Otherwise return text
-    return {
-      text: choice.message.content || '',
-      usage
+    const res: ProviderResponse = {
+      text: choice.message.content || ''
     };
+    if (usage) res.usage = usage;
+    return res;
   }
 }

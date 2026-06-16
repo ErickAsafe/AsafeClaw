@@ -48,19 +48,20 @@ export class GeminiProvider extends BaseProvider {
     const usage = response.usageMetadata ? {
       prompt: response.usageMetadata.promptTokenCount || 0,
       completion: response.usageMetadata.candidatesTokenCount || 0
-    } : undefined;
+    } : null;
 
     // Check if the response contains a function call
     if (response.functionCalls && response.functionCalls.length > 0) {
       const call = response.functionCalls[0];
       if (call && call.name) {
-        return {
+        const res: ProviderResponse = {
           toolCall: {
             name: call.name,
             arguments: call.args as Record<string, any>
-          },
-          usage
+          }
         };
+        if (usage) res.usage = usage;
+        return res;
       }
     }
 
@@ -68,9 +69,10 @@ export class GeminiProvider extends BaseProvider {
     if (!response.text) {
       console.log('[GeminiProvider] Warning: Response text is empty! Raw response:', JSON.stringify(response, null, 2));
     }
-    return {
-      text: response.text || '',
-      usage
+    const res: ProviderResponse = {
+      text: response.text || ''
     };
+    if (usage) res.usage = usage;
+    return res;
   }
 }
