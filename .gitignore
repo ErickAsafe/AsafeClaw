@@ -5,5 +5,5 @@ build/
 data/*.db
 tmp/*
 !tmp/.gitkeep
-.agents/
+
 *.zip

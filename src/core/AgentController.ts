@@ -31,7 +31,7 @@ export class AgentController {
     text: string,
     options?: { requiresAudioReply?: boolean }
   ): Promise<{ text: string, requiresAudioReply: boolean }> {
-    const providerName = 'gemini'; // Changed to Gemini for better Tool Calling stability
+    const providerName = 'groq'; // Changed to Groq to avoid Gemini free tier quota limits
     this.memoryManager.ensureConversation(conversationId, userId, providerName);
 
     // Initialize MCP tools if not already done
