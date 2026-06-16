@@ -59,6 +59,9 @@ export class GeminiProvider extends BaseProvider {
     }
 
     // Otherwise return text
+    if (!response.text) {
+      console.log('[GeminiProvider] Warning: Response text is empty! Raw response:', JSON.stringify(response, null, 2));
+    }
     return {
       text: response.text || ''
     };

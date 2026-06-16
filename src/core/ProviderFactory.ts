@@ -7,7 +7,7 @@ export class ProviderFactory {
   public static create(providerName: string): BaseProvider {
     switch (providerName.toLowerCase()) {
       case 'gemini':
-        return new GeminiProvider();
+        return new GeminiProvider('gemini-2.5-flash');
       case 'groq':
         return new GroqProvider();
       case 'fallback':
