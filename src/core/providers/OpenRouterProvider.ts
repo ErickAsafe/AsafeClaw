@@ -69,6 +69,11 @@ export class OpenRouterProvider extends BaseProvider {
       return { text: '' };
     }
 
+    const usage = data.usage ? {
+      prompt: data.usage.prompt_tokens || 0,
+      completion: data.usage.completion_tokens || 0
+    } : undefined;
+
     // Check if the response contains a tool call
     if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
       const call = choice.message.tool_calls[0]?.function;
@@ -77,14 +82,16 @@ export class OpenRouterProvider extends BaseProvider {
           toolCall: {
             name: call.name,
             arguments: JSON.parse(call.arguments || '{}')
-          }
+          },
+          usage
         };
       }
     }
 
     // Otherwise return text
     return {
-      text: choice.message.content || ''
+      text: choice.message.content || '',
+      usage
     };
   }
 }

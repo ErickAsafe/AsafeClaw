@@ -20,7 +20,11 @@ export class FallbackProvider extends BaseProvider {
     for (const provider of this.providers) {
       try {
         console.log(`[FallbackProvider] Tentando gerar com provedor: ${provider.constructor.name}`);
-        return await provider.generate(messages, systemInstruction, tools);
+        const response = await provider.generate(messages, systemInstruction, tools);
+        if (!response.providerName) {
+            response.providerName = provider.constructor.name;
+        }
+        return response;
       } catch (error: any) {
         console.error(`[FallbackProvider] Provedor ${provider.constructor.name} falhou:`, error.message);
         if (error.status) console.error(`[FallbackProvider] Status do erro:`, error.status);

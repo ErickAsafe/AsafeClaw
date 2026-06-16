@@ -42,6 +42,17 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_user_facts_user_id ON user_facts(user_id);
+
+  CREATE TABLE IF NOT EXISTS token_usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    prompt_tokens INTEGER NOT NULL,
+    completion_tokens INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_token_usage_user_id ON token_usage(user_id);
 `);
 
 export default db;

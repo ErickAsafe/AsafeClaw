@@ -1,4 +1,5 @@
 import db from './db';
+import { ObsidianSync } from './ObsidianSync';
 
 export interface Fact {
   id?: number;
@@ -8,12 +9,23 @@ export interface Fact {
 }
 
 export class FactRepository {
-  public create(fact: Fact): void {
+  private obsidian: ObsidianSync;
+
+  constructor() {
+    this.obsidian = new ObsidianSync();
+  }
+
+  public create(fact: Fact): number | bigint {
     const stmt = db.prepare(`
       INSERT INTO user_facts (user_id, fact)
       VALUES (@user_id, @fact)
     `);
-    stmt.run(fact);
+    const result = stmt.run(fact);
+
+    // Dual-write to Obsidian Markdown file
+    this.obsidian.writeFact(fact.user_id, fact.fact);
+
+    return result.lastInsertRowid;
   }
 
   public getByUserId(userId: string): Fact[] {

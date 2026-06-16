@@ -29,6 +29,25 @@ export class AgentLoop {
       try {
         const response = await provider.generate(context, systemInstruction, toolSchemas);
 
+        // Save token usage
+        if (response.usage) {
+          try {
+            const TokenUsageRepo = require('../memory/TokenUsageRepository').TokenUsageRepository;
+            const ConvRepo = require('../memory/ConversationRepository').ConversationRepository;
+            const conv = new ConvRepo().getById(conversationId);
+            if (conv) {
+              new TokenUsageRepo().create({
+                user_id: conv.user_id,
+                provider: response.providerName || provider.constructor.name,
+                prompt_tokens: response.usage.prompt,
+                completion_tokens: response.usage.completion
+              });
+            }
+          } catch (err) {
+            console.error('[AgentLoop] Error saving token usage:', err);
+          }
+        }
+
         if (response.toolCall) {
           const { name, arguments: args } = response.toolCall;
           console.log(`[AgentLoop] Tool Call: ${name}`, args);

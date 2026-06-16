@@ -9,6 +9,11 @@ export interface ToolCall {
 export interface ProviderResponse {
   text?: string;
   toolCall?: ToolCall;
+  usage?: {
+    prompt: number;
+    completion: number;
+  };
+  providerName?: string;
 }
 
 export abstract class BaseProvider {
