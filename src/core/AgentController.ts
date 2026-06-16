@@ -64,7 +64,13 @@ export class AgentController {
     const currentDate = now.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     const timeContext = `\nAtenção: A data e hora atual do usuário é ${currentDate} (Fuso Horário: America/Sao_Paulo / BRT). Assuma este fuso horário e data atual para todos os agendamentos e buscas caso o usuário não especifique.`;
     
-    let systemInstruction = 'Você é um assistente pessoal IA útil. Responda de forma clara e amigável.' + timeContext;
+    const mcpContext = `\n\nMemória e Cérebro (MCP):
+- Subconsciente (Grafo de Conhecimento): Use as ferramentas de entidades e observações para salvar fatos, preferências ou contexto longo permanentemente (ex: o usuário gosta de X, o app dele faz Y).
+- Cérebro Visual (Obsidian): Use ferramentas de arquivo (read_file, write_file em /home/ubuntu/asafeclaw-brain) para escrever notas livres em Markdown (.md).
+- Cérebro Visual (Notion): Use as ferramentas do Notion para pesquisar e criar páginas/tabelas no Notion do usuário.
+Escolha com sabedoria onde salvar cada informação.`;
+    
+    let systemInstruction = 'Você é um assistente pessoal IA útil. Responda de forma clara e amigável.' + timeContext + mcpContext;
     if (skillId) {
       const skill = skills.find(s => s.id === skillId);
       if (skill) {
