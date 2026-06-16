@@ -19,11 +19,22 @@ export class DynamicMcpTool extends BaseTool {
     const properties: Record<string, any> = {};
     if (mcpToolDef.inputSchema && mcpToolDef.inputSchema.properties) {
       for (const [key, val] of Object.entries<any>(mcpToolDef.inputSchema.properties)) {
-        properties[key] = {
+        const prop: any = {
           type: val.type || 'string',
-          description: val.description || '',
-          enum: val.enum
+          description: val.description || ''
         };
+        
+        if (val.enum) prop.enum = val.enum;
+        
+        if (val.type === 'array') {
+          prop.items = val.items || { type: 'string' };
+        }
+        
+        if (val.type === 'object' && val.properties) {
+          prop.properties = val.properties;
+        }
+
+        properties[key] = prop;
       }
     }
     
