@@ -23,6 +23,8 @@ export class FallbackProvider extends BaseProvider {
         return await provider.generate(messages, systemInstruction, tools);
       } catch (error: any) {
         console.error(`[FallbackProvider] Provedor ${provider.constructor.name} falhou:`, error.message);
+        if (error.status) console.error(`[FallbackProvider] Status do erro:`, error.status);
+        if (error.response?.data) console.error(`[FallbackProvider] Resposta:`, JSON.stringify(error.response.data));
         
         // Se o erro for de sintaxe (como JSON quebrado de tool_calls), nós não queremos pular de provedor
         // Nós queremos jogar de volta para o AgentLoop para ele auto-corrigir.
