@@ -31,6 +31,7 @@ oauth2Client.setCredentials({
 const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 const drive = google.drive({ version: "v3", auth: oauth2Client });
+const sheets = google.sheets({ version: "v4", auth: oauth2Client });
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
@@ -92,6 +93,30 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             content: { type: "string", description: "Text content of the file" },
           },
           required: ["name", "content"],
+        },
+      },
+      {
+        name: "create_google_sheet",
+        description: "Create a new Google Sheet",
+        inputSchema: {
+          type: "object",
+          properties: {
+            title: { type: "string", description: "Title of the new spreadsheet" },
+          },
+          required: ["title"],
+        },
+      },
+      {
+        name: "append_to_google_sheet",
+        description: "Append rows to a Google Sheet",
+        inputSchema: {
+          type: "object",
+          properties: {
+            spreadsheetId: { type: "string", description: "The ID of the spreadsheet" },
+            range: { type: "string", description: "The A1 notation of a range to search for a logical table of data. Values are appended after the last row of the table. e.g. 'Sheet1!A:B'" },
+            values: { type: "array", items: { type: "array", items: { type: "string" } }, description: "2D array of values to append, e.g. [['Row1Col1', 'Row1Col2']]" },
+          },
+          required: ["spreadsheetId", "range", "values"],
         },
       }
     ],
@@ -191,6 +216,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       });
       return {
         content: [{ type: "text", text: `File created successfully! Link: ${res.data.webViewLink}` }],
+      };
+    }
+
+    if (request.params.name === "create_google_sheet") {
+      const args = request.params.arguments as any;
+      const res = await sheets.spreadsheets.create({
+        requestBody: {
+          properties: {
+            title: args.title,
+          },
+        },
+      });
+      return {
+        content: [{ type: "text", text: `Spreadsheet created successfully! ID: ${res.data.spreadsheetId}\nURL: ${res.data.spreadsheetUrl}` }],
+      };
+    }
+
+    if (request.params.name === "append_to_google_sheet") {
+      const args = request.params.arguments as any;
+      const res = await sheets.spreadsheets.values.append({
+        spreadsheetId: args.spreadsheetId,
+        range: args.range,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: args.values,
+        },
+      });
+      return {
+        content: [{ type: "text", text: `Successfully appended ${res.data.updates?.updatedRows} rows and ${res.data.updates?.updatedCells} cells.` }],
       };
     }
 
