@@ -140,32 +140,62 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             spreadsheetId: { type: "string" },
             sheetId: { type: "number", description: "Default 0" },
             theme: { type: "string", enum: ["emerald", "ocean", "midnight", "sunset"] },
-            widgets: {
+            layout: { type: "string", enum: ["STANDARD", "COMPACT", "WIDE"], description: "Default is STANDARD" },
+            header: {
+              type: "object",
+              properties: { title: { type: "string" }, subtitle: { type: "string" } },
+              required: ["title"]
+            },
+            filters: {
+              type: "array",
+              items: { type: "string", enum: ["DATE_RANGE"] },
+              description: "Optional interactive filters"
+            },
+            scorecards: {
               type: "array",
               items: {
                 type: "object",
                 properties: {
-                  type: { type: "string", enum: ["Title", "Scorecard", "StatusColumn", "TableHeader", "Chart"] },
-                  startRow: { type: "number", description: "0-indexed start row" },
-                  endRow: { type: "number", description: "0-indexed end row (exclusive)" },
-                  startCol: { type: "number", description: "0-indexed start column" },
-                  endCol: { type: "number", description: "0-indexed end column (exclusive)" },
                   title: { type: "string" },
                   value: { type: "string" },
-                  formulaRange: { type: "string", description: "e.g. A2:A100 (For Auto-Formulas like SUM or SPARKLINE)" },
-                  options: { type: "array", items: { type: "string" }, description: "For StatusColumn. E.g. ['Pago', 'Pendente', 'Atrasado']" },
+                  formulaRange: { type: "string" }
+                },
+                required: ["title"]
+              }
+            },
+            charts: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
                   chartType: { type: "string", enum: ["BAR", "LINE", "PIE"] },
-                  dataSheetId: { type: "number", description: "Sheet ID for the data (Default 0)" },
+                  dataSheetId: { type: "number" },
                   dataStartRow: { type: "number" },
                   dataEndRow: { type: "number" },
                   dataStartCol: { type: "number" },
                   dataEndCol: { type: "number" }
                 },
-                required: ["type", "startRow", "endRow", "startCol", "endCol"]
+                required: ["title", "chartType"]
+              }
+            },
+            tables: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  startRow: { type: "number", description: "0-indexed row where table data starts (Header)" },
+                  endRow: { type: "number" },
+                  startCol: { type: "number" },
+                  endCol: { type: "number" },
+                  statusColumnIndex: { type: "number", description: "0-indexed column within the sheet for dropdowns" },
+                  statusOptions: { type: "array", items: { type: "string" } }
+                },
+                required: ["startRow", "endRow", "startCol", "endCol"]
               }
             }
           },
-          required: ["spreadsheetId", "theme", "widgets"],
+          required: ["spreadsheetId", "theme", "header"],
         },
       }
     ],
@@ -350,92 +380,173 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
       });
 
-      for (const widget of args.widgets) {
-        const range = {
-          sheetId: sId,
-          startRowIndex: widget.startRow,
-          endRowIndex: widget.endRow,
-          startColumnIndex: widget.startCol,
-          endColumnIndex: widget.endCol
-        };
+      // Auto-Layout Configuration (STANDARD: 8 columns wide, starting at B2)
+      const START_COL = 1;
+      const TOTAL_COLS = 8;
+      const END_COL = START_COL + TOTAL_COLS;
+      
+      let currentRow = 1;
 
-        if (widget.type === "Title") {
-          requests.push({ mergeCells: { range, mergeType: "MERGE_ALL" } });
-          requests.push({
-            repeatCell: {
-              range,
-              cell: {
-                userEnteredFormat: {
-                  textFormat: { fontSize: 24, bold: true, foregroundColor: hexToRgb(themeColors.primary) },
-                  horizontalAlignment: "LEFT",
-                  verticalAlignment: "MIDDLE"
-                }
-              },
-              fields: "userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment)"
-            }
-          });
-          if (widget.title) {
-            valuesUpdates.push({
-              range: `'${sId}'!R${widget.startRow+1}C${widget.startCol+1}`,
-              values: [[widget.title]]
-            });
+      // 2. Header
+      if (args.header) {
+        const headerRange = { sheetId: sId, startRowIndex: currentRow, endRowIndex: currentRow + 2, startColumnIndex: START_COL, endColumnIndex: END_COL };
+        requests.push({ mergeCells: { range: headerRange, mergeType: "MERGE_ALL" } });
+        requests.push({
+          repeatCell: {
+            range: headerRange,
+            cell: {
+              userEnteredFormat: {
+                textFormat: { fontSize: 24, bold: true, foregroundColor: hexToRgb(themeColors.primary) },
+                horizontalAlignment: "LEFT", verticalAlignment: "MIDDLE"
+              }
+            },
+            fields: "userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment)"
           }
-        } 
-        else if (widget.type === "Scorecard") {
-          // Merge cells
-          requests.push({ mergeCells: { range, mergeType: "MERGE_ALL" } });
+        });
+        const titleText = args.header.subtitle ? `${args.header.title}\n${args.header.subtitle}` : args.header.title;
+        valuesUpdates.push({ range: `'${sId}'!R${currentRow+1}C${START_COL+1}`, values: [[titleText]] });
+        
+        requests.push({
+          updateCells: {
+            rows: [{ values: [{ userEnteredValue: { stringValue: titleText } }] }],
+            fields: "userEnteredValue",
+            start: { sheetId: sId, rowIndex: currentRow, columnIndex: START_COL }
+          }
+        });
+        currentRow += 3;
+      }
+
+      // 3. Filters
+      if (args.filters && args.filters.length > 0) {
+        let filterCol = START_COL;
+        for (const filter of args.filters) {
+          if (filter === "DATE_RANGE") {
+            const filterRange1 = { sheetId: sId, startRowIndex: currentRow, endRowIndex: currentRow + 1, startColumnIndex: filterCol, endColumnIndex: filterCol + 2 };
+            const filterRange2 = { sheetId: sId, startRowIndex: currentRow, endRowIndex: currentRow + 1, startColumnIndex: filterCol + 2, endColumnIndex: filterCol + 4 };
+            
+            requests.push({ mergeCells: { range: filterRange1, mergeType: "MERGE_ALL" } });
+            requests.push({ mergeCells: { range: filterRange2, mergeType: "MERGE_ALL" } });
+            
+            // Add Date Validation
+            requests.push({
+              setDataValidation: {
+                range: filterRange1,
+                rule: { condition: { type: "DATE_IS_VALID" }, showCustomUi: true, strict: false }
+              }
+            });
+            requests.push({
+              setDataValidation: {
+                range: filterRange2,
+                rule: { condition: { type: "DATE_IS_VALID" }, showCustomUi: true, strict: false }
+              }
+            });
+            
+            requests.push({
+              updateCells: {
+                rows: [{ values: [{ userEnteredValue: { stringValue: "Início:" }, userEnteredFormat: { textFormat: { bold: true } } }] }],
+                fields: "userEnteredValue,userEnteredFormat(textFormat)",
+                start: { sheetId: sId, rowIndex: currentRow, columnIndex: filterCol }
+              }
+            });
+            requests.push({
+              updateCells: {
+                rows: [{ values: [{ userEnteredValue: { stringValue: "Fim:" }, userEnteredFormat: { textFormat: { bold: true } } }] }],
+                fields: "userEnteredValue,userEnteredFormat(textFormat)",
+                start: { sheetId: sId, rowIndex: currentRow, columnIndex: filterCol + 2 }
+              }
+            });
+            
+            filterCol += 4;
+          }
+        }
+        currentRow += 2;
+      }
+
+      // 4. Scorecards
+      if (args.scorecards && args.scorecards.length > 0) {
+        const scorecardsCount = args.scorecards.length;
+        const colsPerCard = Math.floor(TOTAL_COLS / scorecardsCount);
+        let currentCardCol = START_COL;
+        
+        for (const card of args.scorecards) {
+          const cardRange = { sheetId: sId, startRowIndex: currentRow, endRowIndex: currentRow + 3, startColumnIndex: currentCardCol, endColumnIndex: currentCardCol + colsPerCard };
           
-          // Borders & Background
+          requests.push({ mergeCells: { range: cardRange, mergeType: "MERGE_ALL" } });
           const borderStyle = { style: "SOLID", color: hexToRgb(themeColors.border) };
-          requests.push({
-            updateBorders: {
-              range,
-              top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle
-            }
-          });
+          requests.push({ updateBorders: { range: cardRange, top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle } });
           requests.push({
             repeatCell: {
-              range,
-              cell: {
-                userEnteredFormat: {
-                  backgroundColor: hexToRgb(themeColors.secondary),
-                  horizontalAlignment: "CENTER",
-                  verticalAlignment: "MIDDLE"
-                }
-              },
+              range: cardRange,
+              cell: { userEnteredFormat: { backgroundColor: hexToRgb(themeColors.secondary), horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE" } },
               fields: "userEnteredFormat(backgroundColor,horizontalAlignment,verticalAlignment)"
             }
           });
 
-          // Inject Text / Formula (using valuesUpdates or updateCells)
-          // For Scorecards we want a small title and a big value
-          // We can set a formula like =CONCATENATE("Title", CHAR(10), TEXT(value)) but we don't have multiple formats in one cell easily via updateCells
-          // Instead, since it's merged, we just set the cell value to the formula or text, and format it globally.
-          let content = "";
-          if (widget.formulaRange) {
-             content = `="${widget.title}" & CHAR(10) & SUM(${widget.formulaRange})`; // Simplification
-          } else {
-             content = `${widget.title}\n${widget.value}`;
-          }
-
+          let content = card.formulaRange ? `="${card.title}" & CHAR(10) & SUM(${card.formulaRange})` : `${card.title}\n${card.value || "0"}`;
           requests.push({
             updateCells: {
               rows: [{ values: [{
                 userEnteredValue: content.startsWith("=") ? { formulaValue: content } : { stringValue: content },
-                userEnteredFormat: {
-                  textFormat: { fontSize: 14, bold: true, foregroundColor: hexToRgb(themeColors.text) },
-                  wrapStrategy: "WRAP"
-                }
+                userEnteredFormat: { textFormat: { fontSize: 14, bold: true, foregroundColor: hexToRgb(themeColors.text) }, wrapStrategy: "WRAP" }
               }]}],
               fields: "userEnteredValue,userEnteredFormat(textFormat,wrapStrategy)",
-              start: { sheetId: sId, rowIndex: widget.startRow, columnIndex: widget.startCol }
+              start: { sheetId: sId, rowIndex: currentRow, columnIndex: currentCardCol }
             }
           });
+          
+          currentCardCol += colsPerCard;
         }
-        else if (widget.type === "TableHeader") {
+        currentRow += 4;
+      }
+
+      // 5. Charts
+      if (args.charts && args.charts.length > 0) {
+        const chartsCount = args.charts.length;
+        const colsPerChart = Math.floor(TOTAL_COLS / chartsCount);
+        let currentChartCol = START_COL;
+        
+        for (const chart of args.charts) {
+          let domainSources = [];
+          if (chart.dataStartRow !== undefined && chart.dataEndRow !== undefined && chart.dataStartCol !== undefined && chart.dataEndCol !== undefined) {
+             domainSources.push({
+               sheetId: chart.dataSheetId || sId,
+               startRowIndex: chart.dataStartRow,
+               endRowIndex: chart.dataEndRow,
+               startColumnIndex: chart.dataStartCol,
+               endColumnIndex: chart.dataEndCol
+             });
+          }
+
+          if (domainSources.length > 0) {
+            requests.push({
+              addChart: {
+                chart: {
+                  spec: {
+                    title: chart.title || "Gráfico",
+                    basicChart: {
+                      chartType: chart.chartType || "BAR",
+                      legendPosition: "BOTTOM_LEGEND",
+                      domains: [{ domain: { sourceRange: { sources: domainSources } } }] 
+                    }
+                  },
+                  position: { overlayPosition: { anchorCell: { sheetId: sId, rowIndex: currentRow, columnIndex: currentChartCol }, widthPixels: colsPerChart * 100, heightPixels: 300 } }
+                }
+              }
+            });
+          }
+          currentChartCol += colsPerChart;
+        }
+        currentRow += 10;
+      }
+
+      // 6. Tables (Using provided grid coordinates since data is already there)
+      if (args.tables && args.tables.length > 0) {
+        for (const table of args.tables) {
+          const headerRange = { sheetId: sId, startRowIndex: table.startRow, endRowIndex: table.startRow + 1, startColumnIndex: table.startCol, endColumnIndex: table.endCol };
+          
           requests.push({
             repeatCell: {
-              range,
+              range: headerRange,
               cell: {
                 userEnteredFormat: {
                   backgroundColor: hexToRgb(themeColors.primary),
@@ -446,73 +557,42 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
             }
           });
-        }
-        else if (widget.type === "StatusColumn") {
-          const conditionValues = widget.options.map((v: string) => ({ userEnteredValue: v }));
-          // Dropdown
-          requests.push({
-            setDataValidation: {
-              range,
-              rule: { condition: { type: "ONE_OF_LIST", values: conditionValues }, showCustomUi: true, strict: true }
-            }
-          });
 
-          // Conditional Formatting
-          widget.options.forEach((opt: string) => {
-            let bgColor = themeColors.secondary;
-            let txtColor = themeColors.text;
-            const lower = opt.toLowerCase();
-            if (lower.includes("pago") || lower.includes("concluído") || lower.includes("aprovado") || lower.includes("success")) {
-              bgColor = themeColors.success; txtColor = themeColors.successText;
-            } else if (lower.includes("pendente") || lower.includes("andamento") || lower.includes("espera")) {
-              bgColor = themeColors.warning; txtColor = themeColors.warningText;
-            } else if (lower.includes("atrasado") || lower.includes("cancelado") || lower.includes("erro") || lower.includes("falha")) {
-              bgColor = themeColors.danger; txtColor = themeColors.dangerText;
-            }
-
+          if (table.statusColumnIndex !== undefined && table.statusOptions && table.statusOptions.length > 0) {
+            const statusRange = { sheetId: sId, startRowIndex: table.startRow + 1, endRowIndex: table.endRow, startColumnIndex: table.statusColumnIndex, endColumnIndex: table.statusColumnIndex + 1 };
+            const conditionValues = table.statusOptions.map((v: string) => ({ userEnteredValue: v }));
+            
             requests.push({
-              addConditionalFormatRule: {
-                rule: {
-                  ranges: [range],
-                  booleanRule: {
-                    condition: { type: "TEXT_EQ", values: [{ userEnteredValue: opt }] },
-                    format: { backgroundColor: hexToRgb(bgColor), textFormat: { foregroundColor: hexToRgb(txtColor), bold: true } }
-                  }
-                },
-                index: 0
+              setDataValidation: {
+                range: statusRange,
+                rule: { condition: { type: "ONE_OF_LIST", values: conditionValues }, showCustomUi: true, strict: true }
               }
             });
-          });
-        }
-        else if (widget.type === "Chart") {
-          let dataSheetId = widget.dataSheetId || sId;
-          
-          let domainSources = [];
-          if (widget.dataStartRow !== undefined && widget.dataEndRow !== undefined && widget.dataStartCol !== undefined && widget.dataEndCol !== undefined) {
-             domainSources.push({
-               sheetId: dataSheetId,
-               startRowIndex: widget.dataStartRow,
-               endRowIndex: widget.dataEndRow,
-               startColumnIndex: widget.dataStartCol,
-               endColumnIndex: widget.dataEndCol
-             });
-          }
 
-          if (domainSources.length > 0) {
-            requests.push({
-              addChart: {
-                chart: {
-                  spec: {
-                    title: widget.title || "Gráfico",
-                    basicChart: {
-                      chartType: widget.chartType || "BAR",
-                      legendPosition: "BOTTOM_LEGEND",
-                      domains: [{ domain: { sourceRange: { sources: domainSources } } }] 
+            table.statusOptions.forEach((opt: string) => {
+              let bgColor = themeColors.secondary;
+              let txtColor = themeColors.text;
+              const lower = opt.toLowerCase();
+              if (lower.includes("pago") || lower.includes("concluído") || lower.includes("aprovado") || lower.includes("success")) {
+                bgColor = themeColors.success; txtColor = themeColors.successText;
+              } else if (lower.includes("pendente") || lower.includes("andamento") || lower.includes("espera")) {
+                bgColor = themeColors.warning; txtColor = themeColors.warningText;
+              } else if (lower.includes("atrasado") || lower.includes("cancelado") || lower.includes("erro") || lower.includes("falha")) {
+                bgColor = themeColors.danger; txtColor = themeColors.dangerText;
+              }
+
+              requests.push({
+                addConditionalFormatRule: {
+                  rule: {
+                    ranges: [statusRange],
+                    booleanRule: {
+                      condition: { type: "TEXT_EQ", values: [{ userEnteredValue: opt }] },
+                      format: { backgroundColor: hexToRgb(bgColor), textFormat: { foregroundColor: hexToRgb(txtColor), bold: true } }
                     }
                   },
-                  position: { overlayPosition: { anchorCell: { sheetId: sId, rowIndex: widget.startRow, columnIndex: widget.startCol }, widthPixels: 400, heightPixels: 250 } }
+                  index: 0
                 }
-              }
+              });
             });
           }
         }
