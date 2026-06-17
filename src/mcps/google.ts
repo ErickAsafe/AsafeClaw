@@ -490,13 +490,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           let domainSources = [];
           if (widget.dataStartRow !== undefined && widget.dataEndRow !== undefined && widget.dataStartCol !== undefined && widget.dataEndCol !== undefined) {
              domainSources.push({
-               sourceRange: {
-                 sheetId: dataSheetId,
-                 startRowIndex: widget.dataStartRow,
-                 endRowIndex: widget.dataEndRow,
-                 startColumnIndex: widget.dataStartCol,
-                 endColumnIndex: widget.dataEndCol
-               }
+               sheetId: dataSheetId,
+               startRowIndex: widget.dataStartRow,
+               endRowIndex: widget.dataEndRow,
+               startColumnIndex: widget.dataStartCol,
+               endColumnIndex: widget.dataEndCol
              });
           }
 
