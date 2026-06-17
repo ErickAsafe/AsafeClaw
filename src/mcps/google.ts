@@ -118,10 +118,46 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ["spreadsheetId", "range", "values"],
         },
+      },
+      {
+        name: "add_google_sheet_tab",
+        description: "Add a new tab (sheet) to an existing Google Spreadsheet",
+        inputSchema: {
+          type: "object",
+          properties: {
+            spreadsheetId: { type: "string" },
+            title: { type: "string", description: "Name of the new tab, e.g. 'Dashboard'" },
+          },
+          required: ["spreadsheetId", "title"],
+        },
+      },
+      {
+        name: "format_google_sheet",
+        description: "Apply professional formatting to a Google Sheet (freezes top row, makes headers bold with background color, and optionally hides gridlines)",
+        inputSchema: {
+          type: "object",
+          properties: {
+            spreadsheetId: { type: "string" },
+            sheetId: { type: "number", description: "The numeric ID of the sheet (default: 0 for the first sheet)" },
+            hideGridlines: { type: "boolean", description: "Set to true for Dashboards to hide the default gridlines" },
+            headerColorHex: { type: "string", description: "Hex color for header background, e.g. '#2c3e50'." },
+            headerTextColorHex: { type: "string", description: "Hex color for header text, e.g. '#ffffff'." },
+          },
+          required: ["spreadsheetId"],
+        },
       }
     ],
   };
 });
+
+function hexToRgb(hex: string) {
+  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || "#000000");
+  return result ? {
+    red: parseInt(result[1], 16) / 255,
+    green: parseInt(result[2], 16) / 255,
+    blue: parseInt(result[3], 16) / 255
+  } : { red: 0.2, green: 0.2, blue: 0.2 };
+}
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
@@ -245,6 +281,88 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       });
       return {
         content: [{ type: "text", text: `Successfully appended ${res.data.updates?.updatedRows} rows and ${res.data.updates?.updatedCells} cells.` }],
+      };
+    }
+
+    if (request.params.name === "add_google_sheet_tab") {
+      const args = request.params.arguments as any;
+      const res = await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: args.spreadsheetId,
+        requestBody: {
+          requests: [
+            {
+              addSheet: {
+                properties: {
+                  title: args.title
+                }
+              }
+            }
+          ]
+        }
+      });
+      return {
+        content: [{ type: "text", text: `Tab '${args.title}' added successfully! Sheet ID: ${res.data.replies?.[0].addSheet?.properties?.sheetId}` }],
+      };
+    }
+
+    if (request.params.name === "format_google_sheet") {
+      const args = request.params.arguments as any;
+      const sId = args.sheetId || 0;
+      
+      const requests: any[] = [];
+
+      // Formatting the header
+      if (args.headerColorHex) {
+        requests.push({
+          repeatCell: {
+            range: { sheetId: sId, startRowIndex: 0, endRowIndex: 1 },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: hexToRgb(args.headerColorHex),
+                textFormat: { 
+                  foregroundColor: hexToRgb(args.headerTextColorHex || "#ffffff"), 
+                  bold: true 
+                }
+              }
+            },
+            fields: "userEnteredFormat(backgroundColor,textFormat)"
+          }
+        });
+        
+        // Freeze top row
+        requests.push({
+          updateSheetProperties: {
+            properties: {
+              sheetId: sId,
+              gridProperties: { frozenRowCount: 1 }
+            },
+            fields: "gridProperties.frozenRowCount"
+          }
+        });
+      }
+
+      // Hide gridlines
+      if (args.hideGridlines) {
+        requests.push({
+          updateSheetProperties: {
+            properties: {
+              sheetId: sId,
+              gridProperties: { hideGridlines: true }
+            },
+            fields: "gridProperties.hideGridlines"
+          }
+        });
+      }
+
+      if (requests.length > 0) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: args.spreadsheetId,
+          requestBody: { requests }
+        });
+      }
+
+      return {
+        content: [{ type: "text", text: `Spreadsheet formatted successfully!` }],
       };
     }
 
