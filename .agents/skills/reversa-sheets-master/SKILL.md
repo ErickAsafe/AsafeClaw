@@ -46,9 +46,9 @@ Esta ferramenta transforma um Array JSON em uma interface profissional. Ela acei
   { "type": "StatusColumn", "startRow": 11, "endRow": 50, "startCol": 5, "endCol": 6, "options": ["✅ Pago", "⏳ Pendente", "❌ Atrasado"] }
   ```
 
-- **`Chart`**: Insere um Gráfico Nativo.
+- **`Chart`**: Insere um Gráfico Nativo. Você precisa fornecer a área onde o gráfico vai ser renderizado (startRow/endRow/startCol/endCol) e a área de onde os dados vêm (dataStartRow, etc.).
   ```json
-  { "type": "Chart", "startRow": 6, "endRow": 10, "startCol": 1, "endCol": 5, "chartType": "BAR", "title": "Evolução Mensal" }
+  { "type": "Chart", "startRow": 6, "endRow": 10, "startCol": 1, "endCol": 5, "chartType": "BAR", "title": "Evolução Mensal", "dataSheetId": 0, "dataStartRow": 1, "dataEndRow": 5, "dataStartCol": 1, "dataEndCol": 2 }
   ```
 
 ## Dicas de Design 🎨

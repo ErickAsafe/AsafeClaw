@@ -155,7 +155,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                   formulaRange: { type: "string", description: "e.g. A2:A100 (For Auto-Formulas like SUM or SPARKLINE)" },
                   options: { type: "array", items: { type: "string" }, description: "For StatusColumn. E.g. ['Pago', 'Pendente', 'Atrasado']" },
                   chartType: { type: "string", enum: ["BAR", "LINE", "PIE"] },
-                  dataRange: { type: "string", description: "A1 notation for Chart data" }
+                  dataSheetId: { type: "number", description: "Sheet ID for the data (Default 0)" },
+                  dataStartRow: { type: "number" },
+                  dataEndRow: { type: "number" },
+                  dataStartCol: { type: "number" },
+                  dataEndCol: { type: "number" }
                 },
                 required: ["type", "startRow", "endRow", "startCol", "endCol"]
               }
@@ -481,26 +485,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           });
         }
         else if (widget.type === "Chart") {
-          // Parse dataRange (e.g. "Sheet1!A1:B10")
-          let dataSheetId = sId;
-          // In a real scenario we'd query the sheetId of dataRange, but for simplicity we assume it's on the same sheet or we construct the domain range properly
+          let dataSheetId = widget.dataSheetId || sId;
           
-          requests.push({
-            addChart: {
-              chart: {
-                spec: {
-                  title: widget.title || "Gráfico",
-                  basicChart: {
-                    chartType: widget.chartType || "BAR",
-                    legendPosition: "BOTTOM_LEGEND",
-                    domains: [{ domain: { sourceRange: { sources: [{ sourceRange: { sheetId: dataSheetId } }] } } }] // Simplified, real chart needs A1 range translated to GridRange. For MVP we leave it minimal or use a fallback. Actually, creating charts via API requires GridRange, let's skip actual data series for the boilerplate or keep it empty to be filled by user, or omit the complex GridRange if not fully parsed.
-                    // To avoid crash if dataRange is not perfectly parsed to GridRange, we will use a generic placeholder or skip the chart domain if dataRange is missing.
-                  }
-                },
-                position: { overlayPosition: { anchorCell: { sheetId: sId, rowIndex: widget.startRow, columnIndex: widget.startCol }, widthPixels: 400, heightPixels: 250 } }
+          let domainSources = [];
+          if (widget.dataStartRow !== undefined && widget.dataEndRow !== undefined && widget.dataStartCol !== undefined && widget.dataEndCol !== undefined) {
+             domainSources.push({
+               sourceRange: {
+                 sheetId: dataSheetId,
+                 startRowIndex: widget.dataStartRow,
+                 endRowIndex: widget.dataEndRow,
+                 startColumnIndex: widget.dataStartCol,
+                 endColumnIndex: widget.dataEndCol
+               }
+             });
+          }
+
+          if (domainSources.length > 0) {
+            requests.push({
+              addChart: {
+                chart: {
+                  spec: {
+                    title: widget.title || "Gráfico",
+                    basicChart: {
+                      chartType: widget.chartType || "BAR",
+                      legendPosition: "BOTTOM_LEGEND",
+                      domains: [{ domain: { sourceRange: { sources: domainSources } } }] 
+                    }
+                  },
+                  position: { overlayPosition: { anchorCell: { sheetId: sId, rowIndex: widget.startRow, columnIndex: widget.startCol }, widthPixels: 400, heightPixels: 250 } }
+                }
               }
-            }
-          });
+            });
+          }
         }
       }
 
