@@ -511,33 +511,53 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         let currentChartCol = START_COL;
         
         for (const chart of args.charts) {
-          let domainSources = [];
           if (chart.dataStartRow !== undefined && chart.dataEndRow !== undefined && chart.dataStartCol !== undefined && chart.dataEndCol !== undefined) {
-             domainSources.push({
-               sheetId: chart.dataSheetId || sId,
+             const dataSheetId = chart.dataSheetId || sId;
+             
+             // X-Axis (Domain) must be exactly 1 column wide
+             const domainSource = {
+               sheetId: dataSheetId,
                startRowIndex: chart.dataStartRow,
                endRowIndex: chart.dataEndRow,
                startColumnIndex: chart.dataStartCol,
-               endColumnIndex: chart.dataEndCol
-             });
-          }
+               endColumnIndex: chart.dataStartCol + 1
+             };
 
-          if (domainSources.length > 0) {
-            requests.push({
-              addChart: {
-                chart: {
-                  spec: {
-                    title: chart.title || "Gráfico",
-                    basicChart: {
-                      chartType: chart.chartType || "BAR",
-                      legendPosition: "BOTTOM_LEGEND",
-                      domains: [{ domain: { sourceRange: { sources: domainSources } } }] 
-                    }
-                  },
-                  position: { overlayPosition: { anchorCell: { sheetId: sId, rowIndex: currentRow, columnIndex: currentChartCol }, widthPixels: colsPerChart * 100, heightPixels: 300 } }
-                }
-              }
-            });
+             // Y-Axis (Series) - Create one series for each remaining column
+             const seriesSources = [];
+             for (let c = chart.dataStartCol + 1; c < chart.dataEndCol; c++) {
+               seriesSources.push({
+                 series: {
+                   sourceRange: {
+                     sources: [{
+                       sheetId: dataSheetId,
+                       startRowIndex: chart.dataStartRow,
+                       endRowIndex: chart.dataEndRow,
+                       startColumnIndex: c,
+                       endColumnIndex: c + 1
+                     }]
+                   }
+                 },
+                 targetAxis: "BASIC_CHART_AXIS_POSITION_UNSPECIFIED"
+               });
+             }
+
+             requests.push({
+               addChart: {
+                 chart: {
+                   spec: {
+                     title: chart.title || "Gráfico",
+                     basicChart: {
+                       chartType: chart.chartType || "BAR",
+                       legendPosition: "BOTTOM_LEGEND",
+                       domains: [{ domain: { sourceRange: { sources: [domainSource] } } }],
+                       series: seriesSources.length > 0 ? seriesSources : undefined
+                     }
+                   },
+                   position: { overlayPosition: { anchorCell: { sheetId: sId, rowIndex: currentRow, columnIndex: currentChartCol }, widthPixels: colsPerChart * 100, heightPixels: 300 } }
+                 }
+               }
+             });
           }
           currentChartCol += colsPerChart;
         }
