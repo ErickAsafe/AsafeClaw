@@ -145,6 +145,58 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ["spreadsheetId"],
         },
+      },
+      {
+        name: "format_cells_advanced",
+        description: "Format specific cells (font size, bold, alignment, colors) to create Scorecards or KPIs",
+        inputSchema: {
+          type: "object",
+          properties: {
+            spreadsheetId: { type: "string" },
+            sheetId: { type: "number", description: "Default is 0" },
+            startRowIndex: { type: "number" },
+            endRowIndex: { type: "number" },
+            startColumnIndex: { type: "number" },
+            endColumnIndex: { type: "number" },
+            fontSize: { type: "number", description: "E.g., 24 for KPIs" },
+            bold: { type: "boolean" },
+            horizontalAlignment: { type: "string", description: "LEFT, CENTER, or RIGHT" },
+            backgroundColorHex: { type: "string" },
+            textColorHex: { type: "string" }
+          },
+          required: ["spreadsheetId", "startRowIndex", "endRowIndex", "startColumnIndex", "endColumnIndex"],
+        },
+      },
+      {
+        name: "create_dropdown",
+        description: "Create a data validation dropdown list in a range",
+        inputSchema: {
+          type: "object",
+          properties: {
+            spreadsheetId: { type: "string" },
+            sheetId: { type: "number" },
+            startRowIndex: { type: "number" },
+            endRowIndex: { type: "number" },
+            startColumnIndex: { type: "number" },
+            endColumnIndex: { type: "number" },
+            values: { type: "array", items: { type: "string" }, description: "List of options (e.g. ['✅ Pago', '❌ Cancelado'])" },
+          },
+          required: ["spreadsheetId", "startRowIndex", "endRowIndex", "startColumnIndex", "endColumnIndex", "values"],
+        },
+      },
+      {
+        name: "auto_resize_columns",
+        description: "Auto-resize columns to fit content",
+        inputSchema: {
+          type: "object",
+          properties: {
+            spreadsheetId: { type: "string" },
+            sheetId: { type: "number" },
+            startColumnIndex: { type: "number" },
+            endColumnIndex: { type: "number" },
+          },
+          required: ["spreadsheetId", "startColumnIndex", "endColumnIndex"],
+        },
       }
     ],
   };
@@ -364,6 +416,88 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return {
         content: [{ type: "text", text: `Spreadsheet formatted successfully!` }],
       };
+    }
+
+    if (request.params.name === "format_cells_advanced") {
+      const args = request.params.arguments as any;
+      const sId = args.sheetId || 0;
+      
+      const userEnteredFormat: any = {};
+      if (args.backgroundColorHex) userEnteredFormat.backgroundColor = hexToRgb(args.backgroundColorHex);
+      
+      const textFormat: any = {};
+      if (args.fontSize) textFormat.fontSize = args.fontSize;
+      if (args.bold) textFormat.bold = true;
+      if (args.textColorHex) textFormat.foregroundColor = hexToRgb(args.textColorHex);
+      
+      if (Object.keys(textFormat).length > 0) {
+        userEnteredFormat.textFormat = textFormat;
+      }
+      if (args.horizontalAlignment) {
+        userEnteredFormat.horizontalAlignment = args.horizontalAlignment;
+      }
+
+      const fieldsList = [];
+      if (args.backgroundColorHex) fieldsList.push("backgroundColor");
+      if (Object.keys(textFormat).length > 0) fieldsList.push("textFormat");
+      if (args.horizontalAlignment) fieldsList.push("horizontalAlignment");
+
+      const req = {
+        repeatCell: {
+          range: { sheetId: sId, startRowIndex: args.startRowIndex, endRowIndex: args.endRowIndex, startColumnIndex: args.startColumnIndex, endColumnIndex: args.endColumnIndex },
+          cell: { userEnteredFormat },
+          fields: "userEnteredFormat(" + fieldsList.join(",") + ")"
+        }
+      };
+
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: args.spreadsheetId,
+        requestBody: { requests: [req] }
+      });
+      return { content: [{ type: "text", text: "Cells formatted." }] };
+    }
+
+    if (request.params.name === "create_dropdown") {
+      const args = request.params.arguments as any;
+      const sId = args.sheetId || 0;
+      
+      const conditionValues = args.values.map((v: string) => ({ userEnteredValue: v }));
+      
+      const req = {
+        setDataValidation: {
+          range: { sheetId: sId, startRowIndex: args.startRowIndex, endRowIndex: args.endRowIndex, startColumnIndex: args.startColumnIndex, endColumnIndex: args.endColumnIndex },
+          rule: {
+            condition: { type: "ONE_OF_LIST", values: conditionValues },
+            showCustomUi: true,
+            strict: true
+          }
+        }
+      };
+
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: args.spreadsheetId,
+        requestBody: { requests: [req] }
+      });
+      return { content: [{ type: "text", text: "Dropdown created." }] };
+    }
+
+    if (request.params.name === "auto_resize_columns") {
+      const args = request.params.arguments as any;
+      const req = {
+        autoResizeDimensions: {
+          dimensions: {
+            sheetId: args.sheetId || 0,
+            dimension: "COLUMNS",
+            startIndex: args.startColumnIndex,
+            endIndex: args.endColumnIndex
+          }
+        }
+      };
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: args.spreadsheetId,
+        requestBody: { requests: [req] }
+      });
+      return { content: [{ type: "text", text: "Columns resized." }] };
     }
 
     throw new Error("Tool not found");
