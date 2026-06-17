@@ -387,6 +387,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       
       let currentRow = 1;
 
+      // 1. Safeguard against old LLM context hallucinating the 'widgets' array
+      if (args.widgets) {
+        throw new Error("❌ ENGINE ERROR: You used the deprecated 'widgets' array syntax (startRow, endCol, etc). The Motor de Auto-Layout is active! You must use the new semantic payload syntax (header, filters, scorecards, charts, tables) as specified in the Reversa Sheets Architect SKILL.md. DO NOT SEND 'widgets'.");
+      }
+
       // 2. Header
       if (args.header) {
         const headerRange = { sheetId: sId, startRowIndex: currentRow, endRowIndex: currentRow + 2, startColumnIndex: START_COL, endColumnIndex: END_COL };
